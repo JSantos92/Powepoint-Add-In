@@ -78,8 +78,6 @@ namespace MyRibbonAddIn
             ExecutionRequest request = new ExecutionRequest();
             request.Function = "getFormAnswers";
 
-            // Form url TODO: valor proveniente do powerpoint
-
             string[] requestParam = new string[] { formURL };
 
             request.Parameters = requestParam;

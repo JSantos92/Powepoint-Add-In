@@ -1,6 +1,8 @@
 ﻿using Microsoft.VisualBasic;
+using QRCoder;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -58,19 +60,45 @@ namespace MyRibbonAddIn
             this.ribbon = ribbonUI;
         }
 
-        public void onFormButton(Office.IRibbonControl control)
+        public void createFormPage(Office.IRibbonControl control)
         {
-            string formURL = Interaction.InputBox("Insert form URL:", "Form URL", "https://docs.google.com/forms/d/11Vnlhtcw_kvjAB5QZFrYXiRUiu5Imlix-H8XOOEp9Vs/edit", 100, 200);
+            string formURL = Interaction.InputBox("Insert Google Form URL:", "Google Form URL", "https://docs.google.com/forms/d/11Vnlhtcw_kvjAB5QZFrYXiRUiu5Imlix-H8XOOEp9Vs/edit", 100, 200);
             Newtonsoft.Json.Linq.JObject responses = this.addin.getFormResponses(formURL);
+
+            /*PowerPoint.Shape textBox = this.addin.Application.ActiveWindow.View.Slide.Shapes.AddTextbox(
+                 Office.MsoTextOrientation.msoTextOrientationHorizontal, 0, 0, 500, 50);
+             textBox.TextFrame.TextRange.InsertAfter(responses.ToString());*/
+
+            // Generating TinyUrl Link and adding it to current slide
+
+            Uri address = new Uri("http://tinyurl.com/api-create.php?url=" + formURL);
+            System.Net.WebClient client = new System.Net.WebClient();
+            string tinyUrl = client.DownloadString(address);
+            Console.WriteLine(tinyUrl);
 
             PowerPoint.Shape textBox = this.addin.Application.ActiveWindow.View.Slide.Shapes.AddTextbox(
                 Office.MsoTextOrientation.msoTextOrientationHorizontal, 0, 0, 500, 50);
-            textBox.TextFrame.TextRange.InsertAfter(responses.ToString());
-        }
+            textBox.TextFrame.TextRange.InsertAfter(tinyUrl.ToString());
 
-        #endregion
+            // Generating QrCode and adding it to current slide
 
-        #region Helpers
+            QRCodeGenerator qrGenerator = new QRCodeGenerator();
+            QRCodeData qrCodeData = qrGenerator.CreateQrCode(tinyUrl, QRCodeGenerator.ECCLevel.Q);
+            QRCode qrCode = new QRCode(qrCodeData);
+            Bitmap qrCodeImage = qrCode.GetGraphic(20);
+
+            qrCodeImage.Save("./qrcode.bmp");
+
+            Microsoft.Office.Interop.PowerPoint.Shape ppPicture = this.addin.Application.ActiveWindow.View.Slide.Shapes.AddPicture("./qrcode.bmp", Office.MsoTriState.msoTrue, Office.MsoTriState.msoTrue, 50, 50, 200, 200);
+
+            //PowerPoint.Shape qrCodeImg = this.addin
+
+            //PowerPoint.Shape qrCodePower = this.addin.Application.ActiveWindow.View.Slide.AddPicture("./qrcode.bmp",Microsoft.Office.Core.MsoTriState.msoTrue, Microsoft.Office.Core.MsoTriState.msoFalse, 50,50,200,200);
+        } 
+
+            #endregion
+
+            #region Helpers
 
         private static string GetResourceText(string resourceName)
         {
