@@ -21,7 +21,7 @@ using PowerPoint = Microsoft.Office.Interop.PowerPoint;
 //  }
 
 // 2. Create callback methods in the "Ribbon Callbacks" region of this class to handle user
-//    actions, such as clicking a button. Note: if you have exported this Ribbon from the Ribbon designer,
+//    actions, such as clicking a bu tton.Note: if you have exported this Ribbon from the Ribbon designer,
 //    move your code from the event handlers to the callback methods and modify the code to work with the
 //    Ribbon extensibility (RibbonX) programming model.
 
@@ -37,7 +37,8 @@ namespace MyRibbonAddIn
     {
         private Office.IRibbonUI ribbon;
         private ThisAddIn addin;
-
+        string globalUrl;
+        List<string> formQuestions = new List<string>();
         public MyRibbon(ThisAddIn addin)
         {
             this.addin = addin;
@@ -62,12 +63,9 @@ namespace MyRibbonAddIn
 
         public void createFormPage(Office.IRibbonControl control)
         {
-            string formURL = Interaction.InputBox("Insert Google Form URL:", "Google Form URL", "https://docs.google.com/forms/d/11Vnlhtcw_kvjAB5QZFrYXiRUiu5Imlix-H8XOOEp9Vs/edit", 100, 200);
-            Newtonsoft.Json.Linq.JObject responses = this.addin.getFormResponses(formURL);
+            string formURL = Interaction.InputBox("Insert Google Form URL:", "Google Form URL", "https://docs.google.com/forms/d/11Vnlhtcw_kvjAB5QZFrYXiRUiu5Imlix-H8XOOEp9Vs/edit", 800, 500);
 
-            /*PowerPoint.Shape textBox = this.addin.Application.ActiveWindow.View.Slide.Shapes.AddTextbox(
-                 Office.MsoTextOrientation.msoTextOrientationHorizontal, 0, 0, 500, 50);
-             textBox.TextFrame.TextRange.InsertAfter(responses.ToString());*/
+            globalUrl = formURL;
 
             // Generating TinyUrl Link and adding it to current slide
 
@@ -77,7 +75,7 @@ namespace MyRibbonAddIn
             Console.WriteLine(tinyUrl);
 
             PowerPoint.Shape textBox = this.addin.Application.ActiveWindow.View.Slide.Shapes.AddTextbox(
-                Office.MsoTextOrientation.msoTextOrientationHorizontal, 0, 0, 500, 50);
+                Office.MsoTextOrientation.msoTextOrientationHorizontal, 350, 50, 500, 50);
             textBox.TextFrame.TextRange.InsertAfter(tinyUrl.ToString());
 
             // Generating QrCode and adding it to current slide
@@ -89,16 +87,70 @@ namespace MyRibbonAddIn
 
             qrCodeImage.Save("./qrcode.bmp");
 
-            Microsoft.Office.Interop.PowerPoint.Shape ppPicture = this.addin.Application.ActiveWindow.View.Slide.Shapes.AddPicture("./qrcode.bmp", Office.MsoTriState.msoTrue, Office.MsoTriState.msoTrue, 50, 50, 200, 200);
+            PowerPoint.Shape ppPicture = this.addin.Application.ActiveWindow.View.Slide.Shapes.AddPicture("./qrcode.bmp", Office.MsoTriState.msoTrue, Office.MsoTriState.msoTrue, 285, 150, 350, 350);
 
-            //PowerPoint.Shape qrCodeImg = this.addin
+        }
 
-            //PowerPoint.Shape qrCodePower = this.addin.Application.ActiveWindow.View.Slide.AddPicture("./qrcode.bmp",Microsoft.Office.Core.MsoTriState.msoTrue, Microsoft.Office.Core.MsoTriState.msoFalse, 50,50,200,200);
-        } 
+        public void generateResponsesSlides(Office.IRibbonControl control)
+        {
+            Newtonsoft.Json.Linq.JObject responses = this.addin.getFormResponses(globalUrl);
 
-            #endregion
+            List<string> questions = parseQuestions(responses);
 
-            #region Helpers
+            List<string> answers = parseAnswers(responses);
+
+            PowerPoint.CustomLayout layout = this.addin.Application.ActivePresentation.SlideMaster.CustomLayouts[1];
+
+            for (int i = 0; i < questions.Count(); i++)
+            {
+                this.addin.Application.ActivePresentation.Slides.AddSlide(this.addin.currentSlide+1, layout);
+
+                this.addin.Application.ActiveWindow.Presentation.Slides[this.addin.currentSlide + 1].Select();
+
+                PowerPoint.Shape textBox = this.addin.Application.ActiveWindow.View.Slide.Shapes.AddTextbox(
+                Office.MsoTextOrientation.msoTextOrientationHorizontal, 305, 50, 400, 400);
+                textBox.TextFrame.TextRange.Font.Size = 48;
+                textBox.TextFrame.TextRange.InsertAfter(questions[i]);
+
+                // TODO remove placeholders
+            }
+
+
+
+        }
+
+        public List<string> parseQuestions(Newtonsoft.Json.Linq.JObject responses)
+        {
+            List<string> listQuestions = new List<string>();
+
+            foreach (KeyValuePair<string, Newtonsoft.Json.Linq.JToken> response in responses)
+            {
+                for (int j = 0; j < response.Value["Question"].Count(); j++) {
+                    listQuestions.Add((string)response.Value["Question"][j]);
+                }
+            }
+
+            return listQuestions;
+        }
+
+        public List<string> parseAnswers(Newtonsoft.Json.Linq.JObject responses)
+        {
+            List<string> listAnswers = new List<string>();
+
+            foreach (KeyValuePair<string, Newtonsoft.Json.Linq.JToken> response in responses)
+            {
+                for (int j = 0; j < response.Value["Answer"].Count(); j++)
+                {
+                    listAnswers.Add((string)response.Value["Answer"][j]);
+                }
+            }
+
+            return listAnswers;
+        }
+
+        #endregion
+
+        #region Helpers
 
         private static string GetResourceText(string resourceName)
         {

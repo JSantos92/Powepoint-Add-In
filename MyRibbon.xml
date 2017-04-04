@@ -4,9 +4,12 @@
     <tabs>
       <tab idMso="TabAddIns">
         <group id="ContentGroup" label="Content">
-          <button id="textButton" label="Create Form Slide"
+          <button id="textButton" label="Create Google Form Slide"
                screentip="Retrive" onAction="createFormPage"
                supertip="Inserts a QRCode in the center of the current slide."/>
+          <button id="actionButton" label="Generate Google Form Responses"
+               screentip="Retrive" onAction="generateResponsesSlides"
+               supertip="Generates de results slides for the google form previously introduced."/>
         </group>
       </tab>
     </tabs>

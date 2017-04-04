@@ -24,17 +24,13 @@ namespace MyRibbonAddIn
         
         static string[] Scopes = { "https://www.googleapis.com/auth/forms" };
         static string ApplicationName = "Google Apps Script Execution API .NET Quickstart";
-        Newtonsoft.Json.Linq.JObject responseSet;
-
+        // Newtonsoft.Json.Linq.JObject responseSet;
+        public int currentSlide = 0;
 
 
         private void ThisAddIn_Startup(object sender, System.EventArgs e)
         {
-            Console.WriteLine("Cenas");
-            /*this.Application.PresentationNewSlide +=
-              new PowerPoint.EApplication_PresentationNewSlideEventHandler(
-              Application_PresentationNewSlide);*/
-            //responseSet = getFormResponses("https://docs.google.com/forms/d/11Vnlhtcw_kvjAB5QZFrYXiRUiu5Imlix-H8XOOEp9Vs/edit");
+            this.Application.PresentationNewSlide += new PowerPoint.EApplication_PresentationNewSlideEventHandler(Application_PresentationNewSlide);
         }
 
         private void ThisAddIn_Shutdown(object sender, System.EventArgs e)
@@ -44,6 +40,11 @@ namespace MyRibbonAddIn
         protected override Microsoft.Office.Core.IRibbonExtensibility CreateRibbonExtensibilityObject()
         {
             return new MyRibbon(this);
+        }
+
+        void Application_PresentationNewSlide(PowerPoint.Slide Sld)
+        {
+            currentSlide += 1;
         }
 
         public Newtonsoft.Json.Linq.JObject getFormResponses(string formURL)
@@ -159,12 +160,7 @@ namespace MyRibbonAddIn
             return null;
         }
 
-        void Application_PresentationNewSlide(PowerPoint.Slide Sld)
-        {
-            PowerPoint.Shape textBox = Sld.Shapes.AddTextbox(
-                Office.MsoTextOrientation.msoTextOrientationHorizontal, 0, 0, 500, 50);
-            textBox.TextFrame.TextRange.InsertAfter(responseSet.ToString());
-        }
+
 
         #region VSTO generated code
 
