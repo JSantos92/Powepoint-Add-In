@@ -35,9 +35,10 @@ namespace MyRibbonAddIn
 
         private void ThisAddIn_Shutdown(object sender, System.EventArgs e)
         {
+            closeExcelInstances();
         }
 
-        protected override Microsoft.Office.Core.IRibbonExtensibility CreateRibbonExtensibilityObject()
+        protected override Office.IRibbonExtensibility CreateRibbonExtensibilityObject()
         {
             return new MyRibbon(this);
         }
@@ -46,6 +47,17 @@ namespace MyRibbonAddIn
         {
             currentSlide += 1;
         }
+
+        private void closeExcelInstances()
+        {
+            MyRibbon ribbon = new MyRibbon(this);
+            List<Microsoft.Office.Interop.Excel.Workbook> workbooks = ribbon.getWorkbooks();
+            foreach(Microsoft.Office.Interop.Excel.Workbook book in workbooks)
+            {
+                book.Close();
+            }
+        }
+
 
         public Newtonsoft.Json.Linq.JObject getFormResponses(string formURL)
         {
@@ -68,7 +80,7 @@ namespace MyRibbonAddIn
             }
 
             // Create Google Apps Script Execution API service.
-            string scriptId = "MIZ8ME5AgqFMS6rD8ZLQTQxU3ND9pJt_J";
+            string scriptId = "M0YSrBk4T63lHaeGk0azzG-rKGMnPQbcl";
             var service = new ScriptService(new BaseClientService.Initializer()
             {
                 HttpClientInitializer = credential,
@@ -129,7 +141,9 @@ namespace MyRibbonAddIn
                     // It is most convenient to cast the return value as a JSON
                     // JObject (folderSet).
 
-                    Newtonsoft.Json.Linq.JObject response = (Newtonsoft.Json.Linq.JObject)op.Response["result"];
+                    String resp = (String)op.Response["result"];
+
+                    Newtonsoft.Json.Linq.JObject response = Newtonsoft.Json.Linq.JObject.Parse(resp);
 
                     if (response.Count == 0)
                     {
@@ -160,7 +174,196 @@ namespace MyRibbonAddIn
             return null;
         }
 
+        public void setAcceptingResponses(string formUrl,bool state)
+        {
+            UserCredential credential;
 
+            using (var stream =
+                new FileStream(Path.GetDirectoryName(System.AppDomain.CurrentDomain.BaseDirectory) + "\\client_secret.json", FileMode.Open, FileAccess.Read))
+            {
+                string credPath = System.Environment.GetFolderPath(
+                    System.Environment.SpecialFolder.Personal);
+                credPath = Path.Combine(credPath, ".credentials/script-dotnet-quickstart.json");
+
+                credential = GoogleWebAuthorizationBroker.AuthorizeAsync(
+                    GoogleClientSecrets.Load(stream).Secrets,
+                    Scopes,
+                    "user",
+                    CancellationToken.None,
+                    new FileDataStore(credPath, true)).Result;
+                Console.WriteLine("Credential file saved to: " + credPath);
+            }
+
+            // Create Google Apps Script Execution API service.
+            string scriptId = "M0YSrBk4T63lHaeGk0azzG-rKGMnPQbcl";
+            var service = new ScriptService(new BaseClientService.Initializer()
+            {
+                HttpClientInitializer = credential,
+                ApplicationName = ApplicationName,
+            });
+
+            // Create an execution request object.
+            ExecutionRequest request = new ExecutionRequest();
+            request.Function = "setResponsesState";
+
+            string[] requestParam = new string[] { formUrl,state.ToString() };
+
+            request.Parameters = requestParam;
+
+            ScriptsResource.RunRequest runReq =
+                    service.Scripts.Run(request, scriptId);
+
+            try
+            {
+                // Make the API request.
+                Operation op = runReq.Execute();
+
+                if (op.Error != null)
+                {
+                    // The API executed, but the script returned an error.
+
+                    // Extract the first (and only) set of error details
+                    // as a IDictionary. The values of this dictionary are
+                    // the script's 'errorMessage' and 'errorType', and an
+                    // array of stack trace elements. Casting the array as
+                    // a JSON JArray allows the trace elements to be accessed
+                    // directly.
+                    IDictionary<string, object> error = op.Error.Details[0];
+                    Console.WriteLine(
+                            "Script error message: {0}", error["errorMessage"]);
+                    if (error["scriptStackTraceElements"] != null)
+                    {
+                        // There may not be a stacktrace if the script didn't
+                        // start executing.
+                        Console.WriteLine("Script error stacktrace:");
+                        Newtonsoft.Json.Linq.JArray st =
+                            (Newtonsoft.Json.Linq.JArray)error["scriptStackTraceElements"];
+                        foreach (var trace in st)
+                        {
+                            Console.WriteLine(
+                                    "\t{0}: {1}",
+                                    trace["function"],
+                                    trace["lineNumber"]);
+                        }
+                    }
+                }
+                else
+                {
+                    // The result provided by the API needs to be cast into
+                    // the correct type, based upon what types the Apps
+                    // Script function returns. Here, the function returns
+                    // an Apps Script Object with String keys and values.
+                    // It is most convenient to cast the return value as a JSON
+                    // JObject (folderSet).
+
+                
+
+                }
+            }
+            catch (Google.GoogleApiException entry)
+            {
+                // The API encountered a problem before the script
+                // started executing.
+                Console.WriteLine("Error calling API:\n{0}", entry);
+            }
+
+        }
+
+
+        public void deleteResponses(string formUrl)
+        {
+            UserCredential credential;
+
+            using (var stream =
+                new FileStream(Path.GetDirectoryName(System.AppDomain.CurrentDomain.BaseDirectory) + "\\client_secret.json", FileMode.Open, FileAccess.Read))
+            {
+                string credPath = System.Environment.GetFolderPath(
+                    System.Environment.SpecialFolder.Personal);
+                credPath = Path.Combine(credPath, ".credentials/script-dotnet-quickstart.json");
+
+                credential = GoogleWebAuthorizationBroker.AuthorizeAsync(
+                    GoogleClientSecrets.Load(stream).Secrets,
+                    Scopes,
+                    "user",
+                    CancellationToken.None,
+                    new FileDataStore(credPath, true)).Result;
+                Console.WriteLine("Credential file saved to: " + credPath);
+            }
+
+            // Create Google Apps Script Execution API service.
+            string scriptId = "M0YSrBk4T63lHaeGk0azzG-rKGMnPQbcl";
+            var service = new ScriptService(new BaseClientService.Initializer()
+            {
+                HttpClientInitializer = credential,
+                ApplicationName = ApplicationName,
+            });
+
+            // Create an execution request object.
+            ExecutionRequest request = new ExecutionRequest();
+            request.Function = "deleteResponses";
+
+            string[] requestParam = new string[] { formUrl};
+
+            request.Parameters = requestParam;
+
+            ScriptsResource.RunRequest runReq =
+                    service.Scripts.Run(request, scriptId);
+
+            try
+            {
+                // Make the API request.
+                Operation op = runReq.Execute();
+
+                if (op.Error != null)
+                {
+                    // The API executed, but the script returned an error.
+
+                    // Extract the first (and only) set of error details
+                    // as a IDictionary. The values of this dictionary are
+                    // the script's 'errorMessage' and 'errorType', and an
+                    // array of stack trace elements. Casting the array as
+                    // a JSON JArray allows the trace elements to be accessed
+                    // directly.
+                    IDictionary<string, object> error = op.Error.Details[0];
+                    Console.WriteLine(
+                            "Script error message: {0}", error["errorMessage"]);
+                    if (error["scriptStackTraceElements"] != null)
+                    {
+                        // There may not be a stacktrace if the script didn't
+                        // start executing.
+                        Console.WriteLine("Script error stacktrace:");
+                        Newtonsoft.Json.Linq.JArray st =
+                            (Newtonsoft.Json.Linq.JArray)error["scriptStackTraceElements"];
+                        foreach (var trace in st)
+                        {
+                            Console.WriteLine(
+                                    "\t{0}: {1}",
+                                    trace["function"],
+                                    trace["lineNumber"]);
+                        }
+                    }
+                }
+                else
+                {
+                    // The result provided by the API needs to be cast into
+                    // the correct type, based upon what types the Apps
+                    // Script function returns. Here, the function returns
+                    // an Apps Script Object with String keys and values.
+                    // It is most convenient to cast the return value as a JSON
+                    // JObject (folderSet).
+
+
+
+                }
+            }
+            catch (Google.GoogleApiException entry)
+            {
+                // The API encountered a problem before the script
+                // started executing.
+                Console.WriteLine("Error calling API:\n{0}", entry);
+            }
+
+        }
 
         #region VSTO generated code
 

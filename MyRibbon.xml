@@ -4,12 +4,26 @@
     <tabs>
       <tab idMso="TabAddIns">
         <group id="ContentGroup" label="Content">
-          <button id="textButton" label="Create Google Form Slide"
+          <button id="textButton" label="Create Poll"
                screentip="Retrive" onAction="createFormPage"
                supertip="Inserts a QRCode in the center of the current slide."/>
-          <button id="actionButton" label="Generate Google Form Responses"
+          <button id="actionButton" label="Poll Results"
                screentip="Retrive" onAction="generateResponsesSlides"
-               supertip="Generates de results slides for the google form previously introduced."/>
+               supertip="Generates de poll results as slides"/>
+          <button id="newTry" label="New Try"
+               screentip="new" onAction="newTry"
+               supertip="Apaga as respostas ao inquérito e inicia o registo de uma nova tentativa"/>
+        </group>
+        <group id="ContentGroup2" label="Content">
+          <button id="refresh" label="Refresh"
+              screentip="Refresh" onAction="refreshButton"
+              supertip="Refreshes the poll results"/>
+          <button id="onButton" label="Enable"
+               screentip="Enable" onAction="enableForm"
+               supertip="Enables responses to the Form previously published."/>
+          <button id="offButton" label="Disable"
+               screentip="Disable" onAction="disableForm"
+               supertip="Disables responses to the Form previously published."/>
         </group>
       </tab>
     </tabs>

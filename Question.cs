@@ -24,12 +24,15 @@ namespace MyRibbonAddIn
     {
         public string option { get; set; }
         public int count { get; set; }
-        
-        public Choice(string option, int count)
+        public string row { get; set; }
+
+        public Choice(string gridRow, string option, int count)
         {
             this.option = option;
             this.count = count;
+            row = gridRow;
         }
     }
+
 
 }
