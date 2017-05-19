@@ -20,15 +20,19 @@ namespace MyRibbonAddIn
     public class MyRibbon : Office.IRibbonExtensibility
     {
         private Office.IRibbonUI ribbon;
-        int timerCounter = 0;
-        Timer timer = null;
+        Office.IRibbonControl refreshControl = null;
         private ThisAddIn addin;
         string globalUrl;
         List<Question> formQuestions = new List<Question>();
-        Excel.Workbook dataWorkbook;
+        Excel.Workbook dataWorkbook = null;
         List<Excel.Workbook>  dataWorkbooks = new List<Excel.Workbook>();
-        List<PowerPoint.Chart>  ppCharts = new List<PowerPoint.Chart>();
+        List<Excel.ChartObject>  xlsCharts = new List<Excel.ChartObject>();
         object misValue = System.Reflection.Missing.Value;
+        PowerPoint.ShapeRange shapeRange = null;
+        PowerPoint.Slide pptSlide = null;
+        List<PowerPoint.Slide> pptSlides = new List<PowerPoint.Slide>();
+        List<Excel.Worksheet> dataWorkSheets = new List<Excel.Worksheet>();
+
         public MyRibbon(ThisAddIn addin)
         {
             this.addin = addin;
@@ -93,57 +97,46 @@ namespace MyRibbonAddIn
             {
                 //Adicionar novo slide e mudar slide de foco
 
-                this.addin.Application.ActivePresentation.Slides.AddSlide(this.addin.currentSlide+1, layout);
+                pptSlide = this.addin.Application.ActivePresentation.Slides.AddSlide(this.addin.currentSlide+1, layout);
+
+                pptSlides.Add(pptSlide);
                 this.addin.Application.ActiveWindow.Presentation.Slides[this.addin.currentSlide+1].Select();
                 this.addin.currentSlide++;
 
                 //Output do Titulo da Pergunta 
                 this.addin.Application.ActiveWindow.View.Slide.Shapes.Title.TextFrame.TextRange.Text = questions[i].Title;
 
-                /*              //Output das opçoes de resposta
-                                this.addin.Application.ActiveWindow.View.Slide.Shapes.Placeholders(.Delete(2);
-                */
-                //Output da opção de resposta 
-                //this.addin.Application.ActiveWindow.View.Slide.Shapes.Placeholders(2).TextFrame.TextRange.Text = " ";
+                Excel.Worksheet dataSheet;
 
-                //Output do Gráfico 
-
-                float width = 500F;
-                float left = 230F;
-
-                if (questions[i].Choices.Count > 6)
+                if (i==0)
                 {
-                    width = 750F;
-                    left = 130F;
+                    //Create instance to Excel workbook to work with chart data
+                    Excel.Application excelApp = new Excel.Application();
+                    excelApp.Visible = true;
+
+                    dataWorkbook = excelApp.Workbooks.Add();
+
+                    dataWorkbooks.Add(dataWorkbook);
+
+                    dataWorkbook.Windows[1].WindowState = Excel.XlWindowState.xlMinimized;
+
+                    //Accessing the data worksheet for chart
+                    dataSheet = ((Excel.Worksheet)dataWorkbook.Worksheets[i+1]);
+
+                    dataWorkSheets.Add(dataSheet);
                 }
 
-                else if (questions[i].Choices.Count > 12)
+                else
                 {
-                    width = 1100;
-                    left = 80F;
+                    dataSheet = dataWorkbook.Worksheets.Add();
+                    dataWorkSheets.Add(dataSheet);
+
                 }
 
-                this.addin.Application.ActiveWindow.View.Slide.Shapes.AddChart(Office.XlChartType.xlColumnClustered, left, 120F, width, 400F);
-
-                //Access the added chart
-                PowerPoint.Chart ppChart = this.addin.Application.ActiveWindow.View.Slide.Shapes[2].Chart;               
-
-                //Access the chart data
-                PowerPoint.ChartData chartData = ppChart.ChartData;
-
-                //Create instance to Excel workbook to work with chart data
-                dataWorkbook = (Excel.Workbook)chartData.Workbook;
-
-                dataWorkbooks.Add(dataWorkbook);
-
-                dataWorkbook.Windows[1].WindowState = Excel.XlWindowState.xlMinimized;
-
-                //Accessing the data worksheet for chart
-                Excel.Worksheet dataSheet = ((Excel.Worksheet)dataWorkbook.Worksheets[1]);
                                
                 //Setting the range of chart
 
-                string[] rangeids = { "A", "B", "C", "D", "E", "F", "G", "H" };
+                string[] rangeids = { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z" };
                 string lowerRange = "1";
                 int upRange = questions[i].Choices.Count() + 1;
                 string upperRange = upRange.ToString();
@@ -172,9 +165,19 @@ namespace MyRibbonAddIn
 
                 Excel.Range tRange = dataSheet.Cells.get_Range(lowerRange, upperRange);
 
+                Excel.ListObject tbl1;
+
+                string tableName = "Tabela";
+
                 //Applying the set range on chart data table
-                Excel.ListObject tbl1 = dataSheet.ListObjects["Tabela1"];
+
+                tableName = tableName + i;
+                dataSheet.ListObjects.Add(Excel.XlListObjectSourceType.xlSrcRange, tRange,Type.Missing, Excel.XlYesNoGuess.xlYes, Type.Missing).Name = tableName;
+                tbl1 = dataSheet.ListObjects[tableName];
                 tbl1.Resize(tRange);
+                
+
+                
 
                 //Setting values for categories and respective series data
 
@@ -227,6 +230,28 @@ namespace MyRibbonAddIn
 
                 }
 
+                else if (questions[i].Type == "SCALE")
+                {
+                    for (var j = 0; j < questions[i].Choices.Count; j++)
+                    {
+                        int index1 = j + 2;
+                        string optionaux = option + index1;
+                        dataSheet.Cells.get_Range(optionaux).FormulaR1C1 = "- " + questions[i].Choices[j].option.ToString() + " -";
+
+                    }
+
+                    for (var k = 0; k < questions[i].Choices.Count; k++)
+                    {
+                        int index2 = k + 2;
+                        string countaux = count + index2;
+                        dataSheet.Cells.get_Range(countaux).FormulaR1C1 = questions[i].Choices[k].count.ToString();
+
+                    }
+
+                    dataSheet.Cells.get_Range("A1").FormulaR1C1 = "Categoria";
+                    dataSheet.Cells.get_Range("B1").FormulaR1C1 = "Unique Series"; 
+                }
+
                 else
                 {
                     for (var j = 0; j < questions[i].Choices.Count; j++)
@@ -245,29 +270,57 @@ namespace MyRibbonAddIn
 
                     }
 
-                    dataSheet.Cells.get_Range("A1").FormulaR1C1 = "";
+                    dataSheet.Cells.get_Range("A1").FormulaR1C1 = "Categoria";
+                    dataSheet.Cells.get_Range("B1").FormulaR1C1 = "Unique Series";
                 }
-
-              
-                //((Excel.Range)(dataSheet.Cells.get_Range("B1"))).FormulaR1C1 = null;
-
-                //Setting chart title
-
-                if (questions[i].Type != "GRID")
-                    ppChart.ChartTitle.Delete();
 
 
                 // Insert graphic in Excel
 
-                Excel.Range chartRange;
+                //Output do Gráfico 
 
+                float width = 500F;
+                float left = 230F;
+
+                if (questions[i].Choices.Count > 6)
+                {
+                    width = 750F;
+                    left = 130F;
+                }
+
+                else if (questions[i].Choices.Count > 12)
+                {
+                    width = 1100;
+                    left = 80F;
+                }
+
+                Excel.Range chartRange;
                 Excel.ChartObjects xlCharts = (Excel.ChartObjects)dataSheet.ChartObjects(Type.Missing);
-                Excel.ChartObject myChart = xlCharts.Add(50, 150, 300, 250);
+                Excel.ChartObject myChart = xlCharts.Add(50, 150, width, 250);
                 Excel.Chart chartPage = myChart.Chart;
+
+                object paramMissing = Type.Missing;
+
+                // Declare variables for the Chart.ChartWizard method.
+                object paramChartFormat = 1;
+                object paramCategoryLabels = 0;
+                object paramSeriesLabels = 0;
+                bool paramHasLegend = true;
+         
+
+
+                // Create a new chart of the data.
+                myChart.Chart.ChartWizard(tRange, Excel.XlChartType.xlColumnClustered, paramChartFormat, Excel.XlRowCol.xlRows,
+                    paramCategoryLabels, paramSeriesLabels, paramHasLegend, paramMissing, paramMissing, paramMissing, paramMissing);
 
                 chartRange = dataSheet.get_Range(lowerRange, upperRange);
                 chartPage.SetSourceData(chartRange, misValue);
                 chartPage.ChartType = Excel.XlChartType.xlColumnClustered;
+
+                if (questions[i].Type != "GRID")
+                    chartPage.ChartTitle.Delete();
+
+
                 Excel.Axis excelaxis = chartPage.Axes(Excel.XlAxisType.xlValue, Excel.XlAxisGroup.xlPrimary);
 
                 int maxScale = 0;
@@ -282,47 +335,31 @@ namespace MyRibbonAddIn
                 excelaxis.MinimumScale = 0;
                 excelaxis.MaximumScale = maxScale + 10.0;
 
-                //Accessing Chart value axis
-                PowerPoint.Axis valaxis = ppChart.Axes(PowerPoint.XlAxisType.xlValue, PowerPoint.XlAxisGroup.xlPrimary);
+                myChart.Copy();
 
-                //Setting values axis units
+                shapeRange = pptSlide.Shapes.Paste();
 
-                valaxis.MajorUnit = excelaxis.MajorUnit;
-                valaxis.MinorUnit = excelaxis.MinorUnit;
-                valaxis.MinimumScale = excelaxis.MinimumScale;
-                valaxis.MaximumScale = excelaxis.MaximumScale;
-
-                //Accessing Chart Depth axis
-                //PowerPoint.Axis Depthaxis = ppChart.Axes(PowerPoint.XlAxisType.xlSeriesAxis, PowerPoint.XlAxisGroup.xlPrimary);
-                //Depthaxis.Delete();
-
-                //Setting chart rotation
-                //ppChart.Rotation = 0; //Y-Value
-                //ppChart.Elevation = 0; //X-Value
-                //ppChart.RightAngleAxes = false; 
+                // Position the chart on the slide.
 
 
-               
+
+                shapeRange.Left = left;
+                shapeRange.Top = 160F;
+                shapeRange.Height = 350F;
+                shapeRange.Width = width;
 
 
-                // Live Reload
-                /*
-                                 timer = new Timer((e) =>
-                                 {
-                                     refreshButton(control);
-                                     timerCounter++;
-                                 }, null, 0, Convert.ToInt32(TimeSpan.FromSeconds(5).TotalMilliseconds));
-
-                    */
 
                 //Copy chart to ppcharts
 
-                ppCharts.Add(ppChart);
+                xlsCharts.Add(myChart);
 
+                // Live Reload
 
-            } 
-            
+              
+            }
 
+            pptSlides[0].Select();
         }
 
 
@@ -341,30 +378,20 @@ namespace MyRibbonAddIn
         public void refreshButton(Office.IRibbonControl control)
         {
 
-            if (timerCounter > 20)
-                timer.Dispose();
-
             JObject responses = this.addin.getFormResponses(globalUrl);
 
             List<Question> questions = parseResponses(responses);
 
             int i = 0;
 
-            foreach (PowerPoint.Chart ppChart in ppCharts)
+            foreach (Excel.ChartObject xlsChart in xlsCharts)
                {
 
-                //Access the chart data
-                PowerPoint.ChartData chartData = ppChart.ChartData;
-
-                //Create instance to Excel workbook to work with chart data
-                Excel.Workbook dataWorkbook = (Excel.Workbook)chartData.Workbook;
-
-                //Accessing the data worksheet for chart
-                Excel.Worksheet dataSheet = dataWorkbook.Worksheets[1];
+                Excel.Worksheet dataSheet = dataWorkSheets[i];
 
                 //Setting the range of chart
 
-                string[] rangeids = { "A", "B", "C", "D", "E", "F", "G", "H" };
+                string[] rangeids = { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z" };
                 string lowerRange = "1";
                 int upRange = questions[i].Choices.Count() + 1;
                 string upperRange = upRange.ToString();
@@ -393,10 +420,6 @@ namespace MyRibbonAddIn
 
                 Excel.Range tRange = dataSheet.Cells.get_Range(lowerRange, upperRange);
 
-                //Applying the set range on chart data table
-                Excel.ListObject tbl1 = dataSheet.ListObjects["Tabela1"];
-                tbl1.Resize(tRange);
-
                 //Setting values for categories and respective series data
 
                 string option = "A";
@@ -423,7 +446,7 @@ namespace MyRibbonAddIn
 
                     }
 
-                    string[] columnids = { "A", "B", "C", "D", "E", "F", "G", "H" };
+                    string[] columnids = { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z" };
                     int column_index = 0;
                     bool series_written = false;
 
@@ -448,6 +471,26 @@ namespace MyRibbonAddIn
 
                 }
 
+                else if (questions[i].Type == "SCALE")
+                {
+                    for (var j = 0; j < questions[i].Choices.Count; j++)
+                    {
+                        int index1 = j + 2;
+                        string optionaux = option + index1;
+                        dataSheet.Cells.get_Range(optionaux).FormulaR1C1 = "- " + questions[i].Choices[j].option.ToString() + " -";
+
+                    }
+
+                    for (var k = 0; k < questions[i].Choices.Count; k++)
+                    {
+                        int index2 = k + 2;
+                        string countaux = count + index2;
+                        dataSheet.Cells.get_Range(countaux).FormulaR1C1 = questions[i].Choices[k].count.ToString();
+
+                    }
+
+                }
+
                 else
                 {
                     for (var j = 0; j < questions[i].Choices.Count; j++)
@@ -466,39 +509,64 @@ namespace MyRibbonAddIn
 
                     }
 
-                    dataSheet.Cells.get_Range("A1").FormulaR1C1 = "";
                 }
 
+                float width = 500F;
+                float left = 230F;
 
-
-                //((Excel.Range)(dataSheet.Cells.get_Range("B1"))).FormulaR1C1 = null;
-
-                
-                //Accessing Chart value axis
-                PowerPoint.Axis valaxis = ppChart.Axes(PowerPoint.XlAxisType.xlValue, PowerPoint.XlAxisGroup.xlPrimary);
-
-                //Setting values axis units
-                int maxScale = 0;
-                for (int h = 0; h < questions[i].Choices.Count; h++)
+                if (questions[i].Choices.Count > 6)
                 {
-                    if (questions[i].Choices[h].count > maxScale)
-                        maxScale = questions[i].Choices[h].count;
+                    width = 750F;
+                    left = 130F;
                 }
-                valaxis.MajorUnit = (int)(maxScale + 10.0) / 5;
-                valaxis.MinorUnit = (int)(maxScale + 10.0) / 10;
-                valaxis.MinimumScale = 0;
-                valaxis.MaximumScale = maxScale + 10.0; ;
 
-                //Accessing Chart Depth axis
-                //PowerPoint.Axis Depthaxis = ppChart.Axes(PowerPoint.XlAxisType.xlSeriesAxis, PowerPoint.XlAxisGroup.xlPrimary);
-                //Depthaxis.Delete();
+                else if (questions[i].Choices.Count > 12)
+                {
+                    width = 1100;
+                    left = 80F;
+                }
 
-                //Setting chart rotation
-                //ppChart.Rotation = 0; //Y-Value
-                //ppChart.Elevation = 0; //X-Value
-                //ppChart.RightAngleAxes = false; 
+                Excel.Axis excelaxis = xlsChart.Chart.Axes(Excel.XlAxisType.xlValue, Excel.XlAxisGroup.xlPrimary);
+
+                if (xlsChart.Chart.ChartType ==  Excel.XlChartType.xlColumnClustered)
+                {
+
+                    int maxScale = 0;
+                    for (int h = 0; h < questions[i].Choices.Count; h++)
+                    {
+                        if (questions[i].Choices[h].count > maxScale)
+                            maxScale = questions[i].Choices[h].count;
+                    }
+
+                    excelaxis.MajorUnit = (int)(maxScale + 10.0) / 5;
+                    excelaxis.MinorUnit = (int)(maxScale + 10.0) / 10;
+                    excelaxis.MinimumScale = 0;
+                    excelaxis.MaximumScale = maxScale + 10.0;
+                }
+
+                PowerPoint.Slide currentSlide = this.addin.Application.ActiveWindow.View.Slide;
+
+                pptSlides[i].Select();
+
+                xlsChart.Copy();
+
+                shapeRange = pptSlides[i].Shapes.Paste();
+
+
+                PowerPoint.Shape previousGraph = pptSlides[i].Shapes[2];
+
+                previousGraph.Delete();
+
+                // Position the chart on the slide.
+
+                shapeRange.Left = left;
+                shapeRange.Top = 160F;
+                shapeRange.Height = 350F;
+                shapeRange.Width = width;
 
                 i++;
+
+                currentSlide.Select();
             }
 
         }
