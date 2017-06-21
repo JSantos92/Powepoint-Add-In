@@ -24,6 +24,12 @@
           <button id="offButton" label="Disable"
                screentip="Disable" onAction="disableForm"
                supertip="Disables responses to the Form previously published."/>
+          <button id="startUpdate" label="startUpdate"
+               screentip="start Live Update" onAction="startUpdate"
+               supertip="cenas"/>
+          <button id="stopUpdate" label="stopUpdate"
+               screentip="stopUpdate" onAction="stopUpdate"
+               supertip="cenas"/>
         </group>
       </tab>
     </tabs>
